@@ -23,4 +23,4 @@
 		staticruntime 'On'
 
 		filter { "options:game=five" }
-			targetname "FiveM_Diag"
+			targetname "LSB_Diag"

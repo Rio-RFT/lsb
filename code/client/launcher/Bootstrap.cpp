@@ -58,7 +58,8 @@ static bool Bootstrap_UpdateEXE(int exeSize, const std::string& objectHash)
 	int argc;
 	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	std::wstringstream passThroughStream;
-	for (auto i = 1; i < argc; i++) {
+	for (auto i = 1; i < argc; i++)
+	{
 		passThroughStream << L" " << argv[i];
 	}
 	std::wstring passThrough = passThroughStream.str();
@@ -76,6 +77,7 @@ extern void ResetUpdateChannel();
 
 bool Bootstrap_DoBootstrap()
 {
+
 	// first check the bootstrapper version
 	char bootstrapVersion[256];
 
@@ -160,10 +162,10 @@ bool Bootstrap_DoBootstrap()
 	static HostSharedData<CfxState> initState("CfxInitState");
 	initState->ranPastInstaller = true;
 
-    if (!VerifyViability())
-    {
-        return false;
-    }
+	if (!VerifyViability())
+	{
+		return false;
+	}
 
 	if (updateDataValid)
 	{
@@ -311,7 +313,8 @@ bool Bootstrap_RunInit()
 		if (!_wcsicmp(argv[1], L"-bootstrap"))
 		{
 			std::wstringstream passThrough(L"");
-			for (auto i = 3; i < argc; i++) {
+			for (auto i = 3; i < argc; i++)
+			{
 				passThrough << (i > 3 ? L" " : L"") << argv[i];
 			}
 

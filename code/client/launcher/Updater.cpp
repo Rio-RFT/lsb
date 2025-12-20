@@ -772,7 +772,7 @@ static std::string updateChannel;
 
 void ResetUpdateChannel()
 {
-	std::wstring fpath = MakeRelativeCitPath(L"CitizenFX.ini");
+	std::wstring fpath = MakeRelativeCitPath(L"LSB.ini");
 
 	if (GetFileAttributes(fpath.c_str()) != INVALID_FILE_ATTRIBUTES)
 	{
@@ -786,7 +786,7 @@ const char* GetUpdateChannel()
 {
 	if (!updateChannel.size())
 	{
-		std::wstring fpath = MakeRelativeCitPath(L"CitizenFX.ini");
+		std::wstring fpath = MakeRelativeCitPath(L"LSB.ini");
 
 		if (GetFileAttributes(fpath.c_str()) == INVALID_FILE_ATTRIBUTES)
 		{

@@ -9,6 +9,7 @@
 #include <CommCtrl.h>
 #include <ctime>
 #include <chrono>
+#include <random>
 
 #ifdef LAUNCHER_PERSONALITY_MAIN
 #include <shobjidl.h>
@@ -18,6 +19,11 @@
 #include <ShellScalingApi.h>
 
 #include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.UI.Input.h>
+#include <winrt/Windows.UI.Xaml.Input.h>
+#include <winrt/Windows.UI.Xaml.Shapes.h>
+#include <winrt/Windows.UI.Xaml.Media.Animation.h>
+#include <winrt/Windows.UI.Composition.h>
 
 #include "CitiLaunch/BackdropBrush.g.h"
 #include "winrt/Microsoft.Graphics.Canvas.Effects.h"
@@ -212,7 +218,12 @@ struct TenUI
 	winrt::Windows::UI::Xaml::UIElement snailContainer{ nullptr };
 	winrt::Windows::UI::Xaml::Controls::TextBlock topStatic{ nullptr };
 	winrt::Windows::UI::Xaml::Controls::TextBlock bottomStatic{ nullptr };
-	winrt::Windows::UI::Xaml::Controls::ProgressBar progressBar{ nullptr };
+	winrt::Windows::UI::Xaml::Controls::Border progressBar{ nullptr };
+	
+	// Parallax effect elements
+	winrt::Windows::UI::Xaml::Controls::Grid backdropGrid{ nullptr };
+	winrt::Windows::UI::Composition::CompositionEffectBrush effectBrush{ nullptr };
+	winrt::Windows::Foundation::Numerics::float3x2 baseTransform{};
 };
 
 //static thread_local struct  
@@ -269,7 +280,7 @@ HFONT UI_CreateScaledFont(int cHeight, int cWidth, int cEscapement, int cOrienta
 }
 
 static std::wstring g_mainXaml = LR"(
-<Grid
+<Grid Background="Transparent"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -277,33 +288,52 @@ static std::wstring g_mainXaml = LR"(
 	xmlns:local="using:CitiLaunch"
     mc:Ignorable="d">
 
-    <Grid Width="525" Height="525">
-        <Grid.Resources>
-            <!--<ThemeShadow x:Name="SharedShadow">
-            </ThemeShadow>-->
-        </Grid.Resources>
-        <Grid x:Name="BackdropGrid" />
-		<SwapChainPanel x:Name="Overlay" />
+    <Border CornerRadius="12" Width="854" Height="480">
+        <Border.Background>
+            <SolidColorBrush Color="#161923"/>
+        </Border.Background>
+        <Grid>
+            <Grid.Clip>
+                <RectangleGeometry Rect="0,0,854,480" RadiusX="12" RadiusY="12"/>
+            </Grid.Clip>
+            <Grid x:Name="BackdropGrid" />
+		    <SwapChainPanel x:Name="Overlay" />
+		
+		<!-- Christmas String Lights - Only visible in Dec/Jan -->
+		<Canvas x:Name="ChristmasLights" Visibility="Collapsed">
+			<!-- Top wire -->
+			<Path Stroke="#222222" StrokeThickness="2" Data="M -10,18 Q 60,5 107,22 Q 160,42 214,18 Q 270,0 321,28 Q 375,52 428,22 Q 480,0 535,32 Q 590,55 642,22 Q 695,0 749,28 Q 800,48 854,18 Q 900,5 864,22"/>
+			<!-- Top bulbs -->
+			<Ellipse Canvas.Left="103" Canvas.Top="20" Width="14" Height="20" Fill="#ff4444" x:Name="bulb1"/>
+			<Ellipse Canvas.Left="210" Canvas.Top="16" Width="14" Height="20" Fill="#44ff44" x:Name="bulb2"/>
+			<Ellipse Canvas.Left="317" Canvas.Top="26" Width="14" Height="20" Fill="#4488ff" x:Name="bulb3"/>
+			<Ellipse Canvas.Left="424" Canvas.Top="20" Width="14" Height="20" Fill="#ffcc00" x:Name="bulb4"/>
+			<Ellipse Canvas.Left="531" Canvas.Top="30" Width="14" Height="20" Fill="#ff6600" x:Name="bulb5"/>
+			<Ellipse Canvas.Left="638" Canvas.Top="20" Width="14" Height="20" Fill="#ff4444" x:Name="bulb6"/>
+			<Ellipse Canvas.Left="745" Canvas.Top="26" Width="14" Height="20" Fill="#44ff44" x:Name="bulb7"/>
+			<!-- Bottom wire -->
+			<Path Stroke="#222222" StrokeThickness="2" Data="M -10,458 Q 60,472 107,455 Q 160,438 214,462 Q 270,480 321,455 Q 375,432 428,458 Q 480,480 535,452 Q 590,428 642,458 Q 695,480 749,452 Q 800,432 864,458"/>
+			<!-- Bottom bulbs (upside down) -->
+			<Ellipse Canvas.Left="103" Canvas.Top="440" Width="14" Height="20" Fill="#ffcc00" x:Name="bulb8"/>
+			<Ellipse Canvas.Left="210" Canvas.Top="448" Width="14" Height="20" Fill="#ff6600" x:Name="bulb9"/>
+			<Ellipse Canvas.Left="317" Canvas.Top="438" Width="14" Height="20" Fill="#ff4444" x:Name="bulb10"/>
+			<Ellipse Canvas.Left="424" Canvas.Top="448" Width="14" Height="20" Fill="#44ff44" x:Name="bulb11"/>
+			<Ellipse Canvas.Left="531" Canvas.Top="436" Width="14" Height="20" Fill="#4488ff" x:Name="bulb12"/>
+			<Ellipse Canvas.Left="638" Canvas.Top="448" Width="14" Height="20" Fill="#ffcc00" x:Name="bulb13"/>
+			<Ellipse Canvas.Left="745" Canvas.Top="436" Width="14" Height="20" Fill="#ff6600" x:Name="bulb14"/>
+		</Canvas>
+		
+		<!-- Snowflakes container -->
+		<Canvas x:Name="SnowflakesCanvas" Visibility="Collapsed"/>
+		
         <StackPanel Orientation="Vertical" VerticalAlignment="Center">)"
 #if defined(GTA_FIVE)
 	R"(
-            <Viewbox Height="150" Margin="0,0,0,15" RenderTransformOrigin="0.5,0.5">
-                <Path Data="F1 M 0,0 L 43.57,0 C 44.53,0 47.41,-9.44 52.22,-28.18 68.71,-85.82 78.32,-119.44 80.73,-129.21
-        L 52.54,-156.91 51.74,-156.91 C 48.05,-145.22 30.43,-93.02 -0.8,-0.48 L 0,0 0,0 z
-        M 83.93,-141.06 L 84.41,-141.06 C 84.89,-143.46 85.21,-144.74 85.21,-145.22 L 85.21,-146.02 C 77.04,-154.51 67.91,-163.64 57.82,-173.4
-            56.86,-171.64 56.22,-170.36 56.22,-169.24 L 56.22,-168.76 C 66.47,-158.35 75.6,-149.07 83.93,-141.06 z
-        M 136.94,-109.2 L 137.42,-109.2 C 131.82,-126.97 128.45,-136.1 127.17,-136.58 L 65.99,-197.26 C 65.35,-197.26 63.91,-192.94 61.51,-184.29
-        L 136.94,-109.2 z
-        M 125.57,-142.66 L 125.89,-142.66 C 113.4,-180.61 106.83,-199.82 106.03,-200.14 L 68.39,-200.14 68.39,-199.82
-        C 82.33,-185.57 101.39,-166.68 125.57,-142.66 z
-        M 147.99,-77.01 L 148.47,-77.01 C 147.03,-83.74 143.83,-88.86 138.54,-92.54 122.69,-108.88 106.83,-124.73 90.98,-140.26
-        L 90.5,-140.26 C 91.46,-134.65 93.7,-130.49 97.06,-127.61 L 147.99,-77.01 z
-        M 173.62,0 L 174.58,-0.48 C 162.89,-35.22 156.64,-53.16 155.68,-54.28 L 99.46,-110.16 99.46,-109.68
-        C 101.55,-101.19 112.12,-64.52 130.86,0 L 173.62,0 173.62,0 z" Fill="#f40552" Stretch="Fill">
-                </Path>
-                <Viewbox.RenderTransform>
-                    <ScaleTransform ScaleX="-1" />
-                </Viewbox.RenderTransform>)"
+            <Viewbox Height="150" Margin="0,0,0,20">
+                <Canvas Width="1000" Height="1000">
+                    <Path x:Name="LogoPath" Fill="White" Data="M702.52 451.73L767 401.74c3.31-2.56 5.44-6.32 5.96-10.46l35.13-284.6c1.19-9.64-6.56-18.24-16.44-18.24h-448.6c-14.53 0-21.47 17.36-10.96 27.43l82.18 78.79c5.46 5.23 5.63 13.77 0.39 19.03v0c-5.21 5.22-13.79 5.24-19.21 0.05l-83.69-80.24c-9.68-9.29-25.78-3.89-27.39 9.19l-39.66 321.3c-0.62 5.01 1.2 10.05 4.91 13.61l64.9 62.23c3.1 2.97 7.24 4.64 11.52 4.64h243.12c9.19 0 18.07 3.6 24.69 10.01l0 0c7.82 7.57 11.64 18.26 10.33 28.87l-23.42 189.71c-0.98 7.93-7.75 13.83-15.87 13.83l-195.71 0c-9.88 0-17.63-8.6-16.44-18.24l16.24-131.56c0.62-5.01-1.2-10.05-4.91-13.61L263.4 526.92c-9.68-9.29-25.78-3.89-27.39 9.19l-44.1 357.21c-1.19 9.64 6.56 18.24 16.44 18.24h486.61c8.12 0 14.89-5.9 15.87-13.83l18.08-146.49l21.76-176.27c0.62-5.01-1.2-10.05-4.91-13.61l-49.09-47.07c-5.9-5.66-15.07-6.2-21.44-1.27l-43.73 33.9c0 0-3.49 2.8-7.94 2.49c-5.13-0.36-7.87-3.39-7.87-3.39s-1.26-1.15-2.08-2.63c-1.05-1.88-2.04-4.01-1.61-7.56c0.49-4.04 3.56-6.88 3.56-6.88l45.64-35.38c7.66-5.94 8.15-17.25 1.04-24.07l-47.06-45.11c-3.1-2.97-7.24-4.64-11.52-4.64H414.31c-9.88 0-17.63-8.6-16.44-18.24l18.73-151.75c1.13-9.15 5.26-17.63 11.76-24.17l0 0c7.95-7.99 18.85-12.48 30.3-12.48h172.14c9.88 0 17.63 8.6 16.44 18.24l-19.62 158.93c-0.62 5.01 1.2 10.05 4.91 13.61l48.54 46.54C686.98 456.12 696.15 456.66 702.52 451.73z" />
+                </Canvas>
+	)"
 #elif defined(IS_RDR3)
 	R"(
 			<Viewbox Height="150" Margin="0,0,0,15">
@@ -336,18 +366,20 @@ static std::wstring g_mainXaml = LR"(
 )"
 #endif
 R"(         </Viewbox>
-            <TextBlock x:Name="static1" Text=" " TextAlignment="Center" Foreground="#ffffffff" FontSize="24" />
-			<Grid Margin="0,15,0,15">
-				<ProgressBar x:Name="progressBar" Foreground="White" Width="250" />
+            <TextBlock x:Name="static1" Text=" " TextAlignment="Center" Foreground="#ffffffff" FontSize="24" FontWeight="SemiBold" />
+			<Grid Margin="0,15,0,15" Width="350" Height="10">
+				<Border CornerRadius="5" Background="#33ff81ff" />
+				<Border x:Name="progressBar" CornerRadius="5" Background="#00d4ff" HorizontalAlignment="Left" Width="0" />
 			</Grid>
-            <TextBlock x:Name="static2" Text=" " TextAlignment="Center" Foreground="#ffeeeeee" FontSize="18" />
+            <TextBlock x:Name="static2" Text=" " TextAlignment="Center" Foreground="#ffeeeeee" FontSize="16" />
 			<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" x:Name="snailContainer" Visibility="Collapsed">
 				<TextBlock TextAlignment="Center" Foreground="#ddeeeeee" FontSize="14" Width="430" TextWrapping="Wrap">
 					🐌 RedM game storage downloads are peer-to-peer and may be slower than usual downloads. Please be patient.
 				</TextBlock>
 			</StackPanel>
         </StackPanel>
-    </Grid>
+        </Grid>
+    </Border>
 </Grid>
 )";
 
@@ -393,8 +425,23 @@ void BackdropBrush::OnConnected()
 		auto mat2d = winrt::Windows::Foundation::Numerics::float3x2{};
 
 		using namespace DirectX;
-		auto matrix = XMMatrixTransformation2D(XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), 0.0f, XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f), XMVectorSet(0.5f, 0.5f, 0.0f, 0.0f), 0.2, XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
+		// Rotate 30 degrees (0.5236 radians) around center
+		constexpr float rotationAngle = 0.5236f; // 30 degrees in radians
+		auto matrix = XMMatrixTransformation2D(
+			XMVectorSet(500.0f, 500.0f, 0.0f, 0.0f), // Scale center at backdrop center (1000x1000 / 2)
+			0.0f, // No rotation for scale
+			XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f), // Scale (1:1)
+			XMVectorSet(500.0f, 500.0f, 0.0f, 0.0f), // Rotation center
+			rotationAngle, // 30 degrees rotation
+			XMVectorSet(-250.0f, -150.0f, 0.0f, 1.0f) // Translation offset
+		);
 		XMStoreFloat3x2(&mat2d, matrix);
+
+		// Store base transform for parallax effect
+		if (g_uui.ten)
+		{
+			g_uui.ten->baseTransform = mat2d;
+		}
 
 		auto layer = CompositionEffect(CLSID_D2D12DAffineTransform);
 		layer.AddSource(sp2);
@@ -454,20 +501,20 @@ void BackdropBrush::OnConnected()
 
 		auto cb = winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateSurfaceBrush();
 		cb.Surface(surf);
-		//cb.Stretch(winrt::Windows::UI::Composition::CompositionStretch::UniformToFill);
 		cb.Stretch(winrt::Windows::UI::Composition::CompositionStretch::None);
 
 		auto ef = winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateEffectFactory(compEffect, { L"xform.TransformMatrix" });
 		auto eb = ef.CreateBrush();
 		eb.SetSourceParameter(L"rawImage", cb);
 
+		// Add moving animation (restored from original)
 		using namespace std::chrono_literals;
 
 		auto kfa = winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateVector2KeyFrameAnimation();
 		kfa.InsertKeyFrame(0.0f, { 0.0f, 0.0f });
-		kfa.InsertKeyFrame(0.25f, { 0.0f, -300.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
-		kfa.InsertKeyFrame(0.5f, { -300.0f, -300.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
-		kfa.InsertKeyFrame(0.75f, { -300.0f, 0.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
+		kfa.InsertKeyFrame(0.25f, { 0.0f, -200.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
+		kfa.InsertKeyFrame(0.5f, { -200.0f, -200.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
+		kfa.InsertKeyFrame(0.75f, { -200.0f, 0.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
 		kfa.InsertKeyFrame(1.0f, { 0.0f, 0.0f }, winrt::Windows::UI::Xaml::Window::Current().Compositor().CreateLinearEasingFunction());
 		kfa.Duration(60s);
 		kfa.IterationBehavior(winrt::Windows::UI::Composition::AnimationIterationBehavior::Forever);
@@ -486,6 +533,12 @@ void BackdropBrush::OnConnected()
 		ca.Expression(L"Matrix3x2.CreateFromTranslation(ps.xlate) * rot");
 
 		eb.StartAnimation(L"xform.TransformMatrix", ca);
+
+		// Store effect brush for parallax updates
+		if (g_uui.ten)
+		{
+			g_uui.ten->effectBrush = eb;
+		}
 
 		CompositionBrush(eb);
 	}
@@ -1322,6 +1375,161 @@ static void InitializeRenderOverlay(winrt::Windows::UI::Xaml::Controls::SwapChai
 	}).detach();
 }
 
+// Christmas Effects - Snow and String Lights (Dec/Jan only)
+static void InitializeChristmasEffects(winrt::Windows::UI::Xaml::FrameworkElement const& ui, int width, int height)
+{
+	try
+	{
+		// Find and show Christmas lights canvas - also use it for snow
+		auto lightsObj = ui.FindName(L"ChristmasLights");
+		if (!lightsObj) return;
+		
+		auto lightsCanvas = lightsObj.as<winrt::Windows::UI::Xaml::Controls::Canvas>();
+		lightsCanvas.Visibility(winrt::Windows::UI::Xaml::Visibility::Visible);
+		
+		// Get compositor for effects
+		auto compositor = winrt::Windows::UI::Xaml::Window::Current().Compositor();
+		
+		// Create snow dots (Ellipse) - add to the same canvas as lights
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_real_distribution<float> xDist(50.0f, static_cast<float>(width) - 50.0f);
+		std::uniform_real_distribution<float> yStartDist(-200.0f, -20.0f); // Random start heights
+		std::uniform_real_distribution<float> sizeDist(3.0f, 6.0f);
+		std::uniform_real_distribution<float> durationDist(4.0f, 9.0f); // Varied speeds
+		std::uniform_real_distribution<float> delayDist(0.0f, 8.0f); // Stagger starts
+		
+		const int snowflakeCount = 100; // More dots for continuous effect
+		
+		for (int i = 0; i < snowflakeCount; i++)
+		{
+			float size = sizeDist(gen);
+			
+			// Create Ellipse (white dot)
+			auto snowDot = winrt::Windows::UI::Xaml::Shapes::Ellipse();
+			snowDot.Width(size);
+			snowDot.Height(size);
+			snowDot.Fill(winrt::Windows::UI::Xaml::Media::SolidColorBrush(
+				winrt::Windows::UI::Colors::White()));
+			snowDot.Opacity(0.7 + (gen() % 30) * 0.01);
+			
+			float startX = xDist(gen);
+			float duration = durationDist(gen);
+			float delay = delayDist(gen);
+			
+			// Make some dots start mid-screen to create immediate falling effect
+			float startY;
+			if (i % 3 == 0) {
+				// Start from current position in the fall cycle (already falling)
+				std::uniform_real_distribution<float> midScreenDist(-50.0f, static_cast<float>(height) * 0.6f);
+				startY = midScreenDist(gen);
+				delay = 0; // No delay for already-falling dots
+			} else {
+				startY = yStartDist(gen); // Start from top
+			}
+			
+			// Position
+			winrt::Windows::UI::Xaml::Controls::Canvas::SetLeft(snowDot, startX);
+			winrt::Windows::UI::Xaml::Controls::Canvas::SetTop(snowDot, startY);
+			
+			// Add to lights canvas
+			lightsCanvas.Children().Append(snowDot);
+			
+			// Add glow to snow (using SpriteVisual + SetElementChildVisual)
+			auto sprite = compositor.CreateSpriteVisual();
+			sprite.Size({ size, size });
+			sprite.Brush(compositor.CreateColorBrush(winrt::Windows::UI::Colors::White()));
+			
+			// Clip sprite to circle geometry so shadow is also circular
+			auto geometry = compositor.CreateEllipseGeometry();
+			geometry.Radius({ size / 2.0f, size / 2.0f });
+			geometry.Center({ size / 2.0f, size / 2.0f });
+			auto clip = compositor.CreateGeometricClip(geometry);
+			sprite.Clip(clip);
+			
+			auto shadow = compositor.CreateDropShadow();
+			shadow.BlurRadius(8.0f);
+			shadow.Color(winrt::Windows::UI::Colors::White());
+			shadow.Opacity(0.9f);
+			sprite.Shadow(shadow);
+			
+			winrt::Windows::UI::Xaml::Hosting::ElementCompositionPreview::SetElementChildVisual(snowDot, sprite);
+			
+			// Create DoubleAnimation for Top property
+			auto storyboard = winrt::Windows::UI::Xaml::Media::Animation::Storyboard();
+			auto animation = winrt::Windows::UI::Xaml::Media::Animation::DoubleAnimation();
+			
+			animation.From(startY);
+			animation.To(static_cast<double>(height) + 50.0);
+			animation.Duration(winrt::Windows::UI::Xaml::DurationHelper::FromTimeSpan(
+				std::chrono::milliseconds(static_cast<int>(duration * 1000))));
+			animation.BeginTime(winrt::Windows::Foundation::TimeSpan(
+				std::chrono::milliseconds(static_cast<int>(delay * 1000))));
+			animation.RepeatBehavior(winrt::Windows::UI::Xaml::Media::Animation::RepeatBehaviorHelper::Forever());
+			
+			storyboard.Children().Append(animation);
+			winrt::Windows::UI::Xaml::Media::Animation::Storyboard::SetTarget(animation, snowDot);
+			winrt::Windows::UI::Xaml::Media::Animation::Storyboard::SetTargetProperty(animation, L"(Canvas.Top)");
+			
+			storyboard.Begin();
+		}
+		
+		// Add blinking animation to bulbs
+		for (int i = 1; i <= 14; i++)
+		{
+			try
+			{
+				auto bulbName = L"bulb" + std::to_wstring(i);
+				auto bulb = ui.FindName(winrt::hstring(bulbName)).as<winrt::Windows::UI::Xaml::Shapes::Ellipse>();
+				
+				// Add colored glow to bulb - use container visual approach
+				auto fillBrush = bulb.Fill().as<winrt::Windows::UI::Xaml::Media::SolidColorBrush>();
+				auto bulbColor = fillBrush.Color();
+				
+				auto dropShadow = compositor.CreateDropShadow();
+				dropShadow.BlurRadius(15.0f);
+				dropShadow.Color(bulbColor);
+				dropShadow.Opacity(0.95f);
+				dropShadow.Offset({ 0, 0, 0 });
+				
+				// Create sprite visual with shadow for glow
+				auto sprite = compositor.CreateSpriteVisual();
+				sprite.Size({ 14.0f, 20.0f });
+				sprite.Brush(compositor.CreateColorBrush(bulbColor));
+				
+				// Clip sprite to ellipse geometry
+				auto geometry = compositor.CreateEllipseGeometry();
+				geometry.Radius({ 7.0f, 10.0f });
+				geometry.Center({ 7.0f, 10.0f });
+				auto clip = compositor.CreateGeometricClip(geometry);
+				sprite.Clip(clip);
+				
+				sprite.Shadow(dropShadow);
+				
+				// Set as child visual
+				winrt::Windows::UI::Xaml::Hosting::ElementCompositionPreview::SetElementChildVisual(bulb, sprite);
+				
+				// Animate opacity on the element visual
+				auto visual = winrt::Windows::UI::Xaml::Hosting::ElementCompositionPreview::GetElementVisual(bulb);
+				
+				auto opacityAnimation = compositor.CreateScalarKeyFrameAnimation();
+				opacityAnimation.InsertKeyFrame(0.0f, 1.0f);
+				opacityAnimation.InsertKeyFrame(0.5f, 0.3f);
+				opacityAnimation.InsertKeyFrame(1.0f, 1.0f);
+				opacityAnimation.Duration(std::chrono::milliseconds(600 + (i * 80)));
+				opacityAnimation.IterationBehavior(winrt::Windows::UI::Composition::AnimationIterationBehavior::Forever);
+				
+				visual.StartAnimation(L"Opacity", opacityAnimation);
+			}
+			catch (...) {}
+		}
+	}
+	catch (...)
+	{
+		// Silently fail if Christmas effects cannot be initialized
+	}
+}
+
 void UI_CreateWindow()
 {
 	g_uui.taskbarMsg = RegisterWindowMessage(L"TaskbarButtonCreated");
@@ -1361,8 +1569,8 @@ void UI_CreateWindow()
 	}
 	else
 	{
-		wwidth = 525;
-		wheight = 525;
+		wwidth = 854;
+		wheight = 480;
 
 		// make TenUI
 		auto ten = std::make_unique<TenUI>();
@@ -1380,32 +1588,84 @@ void UI_CreateWindow()
 
 		SetWindowPos(childHwnd, 0, 0, 0, g_dpi.ScaleX(wwidth), g_dpi.ScaleY(wheight), SWP_SHOWWINDOW);
 
+		// Apply rounded corners to window (Windows 11+)
+		{
+			typedef HRESULT(WINAPI* DwmSetWindowAttributeFunc)(HWND, DWORD, LPCVOID, DWORD);
+			auto dwmapi = LoadLibraryW(L"dwmapi.dll");
+			if (dwmapi)
+			{
+				auto pDwmSetWindowAttribute = (DwmSetWindowAttributeFunc)GetProcAddress(dwmapi, "DwmSetWindowAttribute");
+				if (pDwmSetWindowAttribute)
+				{
+					// DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_ROUND = 2
+					DWORD cornerPreference = 2;
+					pDwmSetWindowAttribute(rootWindow, 33, &cornerPreference, sizeof(cornerPreference));
+				}
+			}
+		}
+
 		auto doc = winrt::Windows::UI::Xaml::Markup::XamlReader::Load(g_mainXaml);
 		auto ui = doc.as<winrt::Windows::UI::Xaml::FrameworkElement>();
 
 		auto bg = ui.FindName(L"BackdropGrid").as<winrt::Windows::UI::Xaml::Controls::Grid>();
 		bg.Background(winrt::make<BackdropBrush>());
 
-		{
-			auto sc = ui.FindName(L"Overlay").as<winrt::Windows::UI::Xaml::Controls::SwapChainPanel>();
+		// Store backdrop grid reference for parallax
+		ten->backdropGrid = bg;
 
+		// Add pointer move event for parallax effect
+		ui.PointerMoved([wwidth, wheight](winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::UI::Xaml::Input::PointerRoutedEventArgs const& e)
+		{
+			if (!g_uui.ten || !g_uui.ten->effectBrush)
+				return;
+
+			try
+			{
+				winrt::Windows::UI::Input::PointerPoint point = e.GetCurrentPoint(sender.as<winrt::Windows::UI::Xaml::UIElement>());
+				winrt::Windows::Foundation::Point pos = point.Position();
+
+				// Calculate offset from center (normalized -1 to 1)
+				float centerX = static_cast<float>(wwidth) / 2.0f;
+				float centerY = static_cast<float>(wheight) / 2.0f;
+				float deltaX = (pos.X - centerX) / centerX;
+				float deltaY = (pos.Y - centerY) / centerY;
+
+				// Apply parallax offset (max 30 pixels)
+				float offsetX = deltaX * -30.0f;
+				float offsetY = deltaY * -30.0f;
+
+				// Create new transform with offset
+				winrt::Windows::Foundation::Numerics::float3x2 newTransform = g_uui.ten->baseTransform;
+				newTransform.m31 += offsetX;
+				newTransform.m32 += offsetY;
+
+				// Update effect brush transform
+				g_uui.ten->effectBrush.Properties().InsertMatrix3x2(L"xform.TransformMatrix", newTransform);
+			}
+			catch (...) {}
+		});
+
+		// Snow effect removed - overlay panel kept for potential future use
+		// auto sc = ui.FindName(L"Overlay").as<winrt::Windows::UI::Xaml::Controls::SwapChainPanel>();
+
+		// Initialize Christmas effects (December and January only)
+		{
 			auto time = std::time(nullptr);
 			auto datetime = std::localtime(&time);
 			auto month = datetime->tm_mon + 1;
 
-			// Snow effect for December and January
 			if (month == 12 || month == 1)
 			{
-				InitializeRenderOverlay(sc, g_dpi.ScaleX(wwidth), g_dpi.ScaleY(wheight));
+				InitializeChristmasEffects(ui, wwidth, wheight);
 			}
 		}
-
+		
 		/*auto shadow = ui.FindName(L"SharedShadow").as<winrt::Windows::UI::Xaml::Media::ThemeShadow>();
 		shadow.Receivers().Append(bg);*/
 
 		ten->topStatic = ui.FindName(L"static1").as<winrt::Windows::UI::Xaml::Controls::TextBlock>();
 		ten->bottomStatic = ui.FindName(L"static2").as<winrt::Windows::UI::Xaml::Controls::TextBlock>();
-		ten->progressBar = ui.FindName(L"progressBar").as<winrt::Windows::UI::Xaml::Controls::ProgressBar>();
+		ten->progressBar = ui.FindName(L"progressBar").as<winrt::Windows::UI::Xaml::Controls::Border>();
 		ten->snailContainer = ui.FindName(L"snailContainer").as<winrt::Windows::UI::Xaml::UIElement>();
 
 		ten->uiSource.Content(ui);
@@ -1763,14 +2023,13 @@ void UI_UpdateProgress(double percentage)
 	{
 		try
 		{
-			g_uui.ten->progressBar.Maximum(100.0);
-			g_uui.ten->progressBar.Value(percentage);
+			// Calculate width based on percentage (350 is max width)
+			double width = (percentage / 100.0) * 350.0;
+			g_uui.ten->progressBar.Width(width);
 		}
 		catch (...)
 		{
 		}
-
-		g_uui.ten->progressBar.IsIndeterminate(percentage == 100);
 
 		return;
 	}

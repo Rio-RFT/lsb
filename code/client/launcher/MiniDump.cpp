@@ -410,7 +410,7 @@ static void OverloadCrashData(TASKDIALOGCONFIG* config)
 	if (blame)
 	{
 		static std::wstring errTitle = fmt::sprintf(L"%s encountered an error", blame);
-		static std::wstring errDescription = fmt::sprintf(L"FiveM crashed due to %s.\n%s", blame, blame_two);
+		static std::wstring errDescription = fmt::sprintf(L"LSB crashed due to %s.\n%s", blame, blame_two);
 
 		config->pszMainInstruction = errTitle.c_str();
 		config->pszContent = errDescription.c_str();
@@ -481,7 +481,7 @@ static std::wstring UnblameCrash(const std::wstring& hash)
 
 	if (hash.find(L"GTAProcess") != std::string::npos ||
 		hash.find(L"GameProcess") != std::string::npos ||
-		_wcsnicmp(hash.c_str(), L"fivem.exe+", 10) == 0 ||
+		_wcsnicmp(hash.c_str(), L"lsb.exe+", 10) == 0 ||
 		_wcsnicmp(hash.c_str(), L"redm.exe+", 9) == 0)
 	{
 		auto baseGame = std::wstring_view{ GAME_EXECUTABLE };
@@ -858,7 +858,7 @@ void InitializeDumpServer(int inheritedHandle, int parentPid)
 													if (wcsstr(filename, L".exe") != nullptr)
 													{
 #ifdef GTA_FIVE
-														wcscpy(filename, L"\\FiveM.exe");
+														wcscpy(filename, L"\\LSB.exe");
 #elif defined(IS_RDR3)
 														wcscpy(filename, L"\\RedM.exe");
 #else
@@ -1268,7 +1268,7 @@ void InitializeDumpServer(int inheritedHandle, int parentPid)
 
 						if (!cd.empty())
 						{
-							mainInstruction = gettext(L"FiveM crashed... but we're on it!");
+							mainInstruction = gettext(L"LSB crashed... but we're on it!");
 							cd += "\n\n";
 						}
 

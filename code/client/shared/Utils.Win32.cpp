@@ -36,7 +36,7 @@ fwPlatformString GetAbsoluteCitPath()
 #ifdef IS_RDR3
 				if (!CreateDirectory((citizenPath + L"RedM.app").c_str(), nullptr))
 #else
-				if (!CreateDirectory((citizenPath + L"FiveM.app").c_str(), nullptr))
+				if (!CreateDirectory((citizenPath + L"LSB.app").c_str(), nullptr))
 #endif
 				{
 					DWORD error = GetLastError();
@@ -56,7 +56,7 @@ fwPlatformString GetAbsoluteCitPath()
 #ifdef IS_RDR3
 								   L"RedM.app";
 #else
-								   L"FiveM.app";
+								   L"LSB.app";
 #endif
 
 			if (GetFileAttributes(subPath.c_str()) != INVALID_FILE_ATTRIBUTES && (GetFileAttributes(subPath.c_str()) & FILE_ATTRIBUTE_DIRECTORY) != 0)
@@ -83,8 +83,7 @@ fwPlatformString GetAbsoluteCitPath()
 		return citizenPath;
 	};
 
-	static fwPlatformString citizenPaths[2] =
-	{
+	static fwPlatformString citizenPaths[2] = {
 		getCitizenPath(),
 		L"",
 	};
@@ -122,7 +121,7 @@ fwPlatformString GetAbsoluteGamePath()
 
 	if (!initState->gameDirectory[0])
 	{
-		std::wstring fpath = MakeRelativeCitPath(L"CitizenFX.ini");
+		std::wstring fpath = MakeRelativeCitPath(L"LSB.ini");
 
 		if (GetFileAttributes(fpath.c_str()) == INVALID_FILE_ATTRIBUTES)
 		{
@@ -162,10 +161,10 @@ bool IsRunningTests()
 	return !_wcsnicmp(filenamePart, L"tests_", 6);
 }
 
-void CreateDirectoryAnyDepth(const char *path)
+void CreateDirectoryAnyDepth(const char* path)
 {
 	char opath[MAX_PATH];
-	char *p;
+	char* p;
 	size_t len;
 	strncpy_s(opath, path, sizeof(opath));
 	len = strlen(opath);
@@ -188,7 +187,7 @@ void CreateDirectoryAnyDepth(const char *path)
 
 const DWORD MS_VC_EXCEPTION = 0x406D1388;
 
-#pragma pack(push,8)
+#pragma pack(push, 8)
 typedef struct tagTHREADNAME_INFO
 {
 	DWORD dwType; // Must be 0x1000.
@@ -281,10 +280,9 @@ static void __declspec(naked) Win32TrapAndJumpX86()
 #endif
 
 void __cdecl _wwassert(
-	_In_z_ wchar_t const* _Message,
-	_In_z_ wchar_t const* _File,
-	_In_   unsigned       _Line
-)
+_In_z_ wchar_t const* _Message,
+_In_z_ wchar_t const* _File,
+_In_ unsigned _Line)
 {
 	FatalErrorNoExcept("Assertion failure: %s\nFile: %s, Line: %d", ToNarrow(_Message), ToNarrow(_File), _Line);
 

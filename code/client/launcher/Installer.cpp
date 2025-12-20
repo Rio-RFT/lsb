@@ -54,7 +54,6 @@ static std::wstring GetFolderPath(const KNOWNFOLDERID& folderId)
 		return pathStr;
 	}
 
-
 	return L"";
 }
 
@@ -65,7 +64,7 @@ static std::wstring GetRootPath()
 	if (!appDataPath.empty())
 	{
 #ifdef GTA_FIVE
-		appDataPath += L"\\FiveM";
+		appDataPath += L"\\LSB";
 #elif defined(IS_RDR3)
 		appDataPath += L"\\RedM";
 #else
@@ -91,21 +90,21 @@ static void CreateUninstallEntryIfNeeded()
 
 	auto setUninstallString = [](const std::wstring& name, const std::wstring& value)
 	{
-		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CitizenFX_" PRODUCT_NAME, name.c_str(), REG_SZ, value.c_str(), (value.length() * 2) + 2);
+		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LSB_" PRODUCT_NAME, name.c_str(), REG_SZ, value.c_str(), (value.length() * 2) + 2);
 	};
 
 	auto setUninstallDword = [](const std::wstring& name, DWORD value)
 	{
-		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CitizenFX_" PRODUCT_NAME, name.c_str(), REG_DWORD, &value, sizeof(value));
+		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LSB_" PRODUCT_NAME, name.c_str(), REG_DWORD, &value, sizeof(value));
 	};
 
 	setUninstallString(L"DisplayName", PRODUCT_NAME);
 	setUninstallString(L"DisplayIcon", filename + std::wstring(L",0"));
-	setUninstallString(L"HelpLink", L"https://cfx.re/");
+	setUninstallString(L"HelpLink", L"https://lsb-community.vn/");
 	setUninstallString(L"InstallLocation", GetRootPath());
-	setUninstallString(L"Publisher", L"Cfx.re");
+	setUninstallString(L"Publisher", L"Refined Development");
 	setUninstallString(L"UninstallString", fmt::sprintf(L"\"%s\" -uninstall app", filename));
-	setUninstallString(L"URLInfoAbout", L"https://cfx.re/");
+	setUninstallString(L"URLInfoAbout", L"https://lsb-community.vn/");
 	setUninstallDword(L"NoModify", 1);
 	setUninstallDword(L"NoRepair", 1);
 }
@@ -113,7 +112,7 @@ static void CreateUninstallEntryIfNeeded()
 void Install_Uninstall(const wchar_t* directory)
 {
 	// check if this is actually a FiveM directory we're trying to uninstall
-	if (GetFileAttributes(fmt::sprintf(L"%s\\%s", directory, PRODUCT_NAME L".app").c_str()) == INVALID_FILE_ATTRIBUTES)
+	if (GetFileAttributes(fmt::sprintf(L"%s\\%s", directory, L"LSB.app").c_str()) == INVALID_FILE_ATTRIBUTES)
 	{
 		return;
 	}
@@ -152,10 +151,10 @@ void Install_Uninstall(const wchar_t* directory)
 
 	ifo->SetOperationFlags(FOF_NOCONFIRMATION);
 
-	auto addDelete = [ifo](const std::wstring & item)
+	auto addDelete = [ifo](const std::wstring& item)
 	{
 		WRL::ComPtr<IShellItem> shitem;
-		if (FAILED(SHCreateItemFromParsingName(item.c_str(), NULL, IID_IShellItem, (void**)& shitem)))
+		if (FAILED(SHCreateItemFromParsingName(item.c_str(), NULL, IID_IShellItem, (void**)&shitem)))
 		{
 			return false;
 		}
@@ -167,8 +166,8 @@ void Install_Uninstall(const wchar_t* directory)
 	addDelete(directory);
 	addDelete(GetFolderPath(FOLDERID_Programs) + L"\\" PRODUCT_NAME L".lnk");
 	addDelete(GetFolderPath(FOLDERID_Desktop) + L"\\" PRODUCT_NAME L".lnk");
-	addDelete(GetFolderPath(FOLDERID_Programs) + L"\\" PRODUCT_NAME L" - Cfx.re Development Kit (FxDK).lnk");
-	addDelete(GetFolderPath(FOLDERID_Desktop) + L"\\" PRODUCT_NAME L" - Cfx.re Development Kit (FxDK).lnk");
+	addDelete(GetFolderPath(FOLDERID_Programs) + L"\\" PRODUCT_NAME L" - Refined Development Kit (FxDK).lnk");
+	addDelete(GetFolderPath(FOLDERID_Desktop) + L"\\" PRODUCT_NAME L" - Refined Development Kit (FxDK).lnk");
 
 	hr = ifo->PerformOperations();
 
@@ -186,7 +185,7 @@ void Install_Uninstall(const wchar_t* directory)
 		MessageBox(NULL, L"The uninstall operation was canceled. Some files may still remain. Please remove these files manually.", L"InsnailShield", MB_OK | MB_ICONSTOP);
 	}
 
-	RegDeleteKey(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CitizenFX_" PRODUCT_NAME);
+	RegDeleteKey(HKEY_CURRENT_USER, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LSB_" PRODUCT_NAME);
 }
 
 bool Install_PerformInstallation()
@@ -220,7 +219,7 @@ bool Install_PerformInstallation()
 
 			return true;
 		}
-		
+
 		return false;
 	};
 
@@ -229,9 +228,9 @@ bool Install_PerformInstallation()
 	{
 		// at least re-verify the game, if the user 'tried' to reinstall
 		DeleteFileW((rootPath + L"\\caches.xml").c_str());
-		DeleteFileW((rootPath + L"\\" PRODUCT_NAME L".app\\caches.xml").c_str());
+		DeleteFileW((rootPath + L"\\LSB.app\\caches.xml").c_str());
 		DeleteFileW((rootPath + L"\\content_index.xml").c_str());
-		DeleteFileW((rootPath + L"\\" PRODUCT_NAME L".app\\content_index.xml").c_str());
+		DeleteFileW((rootPath + L"\\LSB.app\\content_index.xml").c_str());
 
 		// hand off to the actual game
 		if (!doHandoff())
@@ -263,7 +262,7 @@ bool Install_PerformInstallation()
 			shellLink->SetPath(targetExePath.c_str());
 			shellLink->SetDescription(PRODUCT_NAME L" is a modification framework based on the Cfx.re platform");
 			shellLink->SetIconLocation(targetExePath.c_str(), 0);
-			
+
 			SetAumid(shellLink);
 
 			WRL::ComPtr<IPersistFile> persist;
@@ -281,7 +280,7 @@ bool Install_PerformInstallation()
 
 	// create installroot dirs
 	{
-		auto appPath = rootPath + L"\\" PRODUCT_NAME L".app";
+		auto appPath = rootPath + L"\\LSB.app";
 		CreateDirectory(appPath.c_str(), nullptr);
 
 		FILE* f = _wfopen((appPath + L"\\" PRODUCT_NAME L".installroot").c_str(), L"w");
@@ -375,7 +374,7 @@ void Install_RunPostInstall()
 
 	std::initializer_list<std::tuple<std::wstring, std::wstring, int, std::wstring>> links = {
 #ifdef GTA_FIVE
-		{ L" - Cfx.re Development Kit (FxDK)", L"-fxdk", -203, L"CitizenFX.FiveM.SDK" },
+	// { L" - Cfx.re Development Kit (FxDK)", L"-fxdk", -203, L"CitizenFX.FiveM.SDK" },
 #endif
 	};
 
@@ -457,10 +456,7 @@ void Install_RunPostInstall()
 bool Install_RunInstallMode()
 {
 	// if we're already installed 'sufficiently', this isn't a new install, but we *should* update external links
-	if (GetFileAttributes(MakeRelativeCitPath(L"CoreRT.dll").c_str()) != INVALID_FILE_ATTRIBUTES ||
-		GetFileAttributes(MakeRelativeCitPath(L"citizen-resources-client.dll").c_str()) != INVALID_FILE_ATTRIBUTES ||
-		GetFileAttributes(MakeRelativeCitPath(L"CitizenFX.ini").c_str()) != INVALID_FILE_ATTRIBUTES ||
-		GetFileAttributes(MakeRelativeCitPath(PRODUCT_NAME L".installroot").c_str()) != INVALID_FILE_ATTRIBUTES)
+	if (GetFileAttributes(MakeRelativeCitPath(L"CoreRT.dll").c_str()) != INVALID_FILE_ATTRIBUTES || GetFileAttributes(MakeRelativeCitPath(L"citizen-resources-client.dll").c_str()) != INVALID_FILE_ATTRIBUTES || GetFileAttributes(MakeRelativeCitPath(L"LSB.ini").c_str()) != INVALID_FILE_ATTRIBUTES || GetFileAttributes(MakeRelativeCitPath(PRODUCT_NAME L".installroot").c_str()) != INVALID_FILE_ATTRIBUTES)
 	{
 		Install_RunPostInstall();
 
@@ -472,9 +468,7 @@ bool Install_RunInstallMode()
 
 	bool isDownloadsFolder = false;
 
-	if (StrStrIW(hostData->GetInitPath().c_str(), L"downloads") != nullptr ||
-		StrStrIW(hostData->GetInitPath().c_str(), L"\\dls") != nullptr ||
-		StrStrIW(hostData->GetInitPath().c_str(), L"\\Desktop") != nullptr)
+	if (StrStrIW(hostData->GetInitPath().c_str(), L"downloads") != nullptr || StrStrIW(hostData->GetInitPath().c_str(), L"\\dls") != nullptr || StrStrIW(hostData->GetInitPath().c_str(), L"\\Desktop") != nullptr)
 	{
 		isDownloadsFolder = true;
 	}
@@ -494,14 +488,13 @@ bool Install_RunInstallMode()
 		}
 		catch (std::exception& e)
 		{
-
 		}
 
 		return true;
 	});
 
 	// compare
-	if (numFiles <= maxOtherFiles)
+	if (numFiles <= maxOtherFiles && !isDownloadsFolder)
 	{
 		return false;
 	}

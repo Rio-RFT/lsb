@@ -87,7 +87,6 @@ auto InitMinMode()
 	}
 	catch (std::exception& e)
 	{
-
 	}
 
 	return std::make_shared<fx::MinModeManifest>();
@@ -116,10 +115,10 @@ void DLLError(DWORD errorCode, std::string_view dllName)
 	_wunlink(MakeRelativeCitPath(L"content_index.xml").c_str());
 
 	FatalError("Could not load %s\nThis is usually a sign of an incomplete game installation. Please restart %s and try again.\n\nError 0x%08x - %s",
-		dllName,
-		ToNarrow(PRODUCT_NAME),
-		HRESULT_FROM_WIN32(errorCode),
-		win32::FormatMessage(errorCode));
+	dllName,
+	ToNarrow(PRODUCT_NAME),
+	HRESULT_FROM_WIN32(errorCode),
+	win32::FormatMessage(errorCode));
 }
 
 #ifdef LAUNCHER_PERSONALITY_MAIN
@@ -266,7 +265,8 @@ int RealMain()
 
 	// initialize our initState instance
 	// this needs to be before *any* MakeRelativeCitPath use in main process
-	auto initState = CfxState::Get();
+	// auto initState = CfxState::Get();
+	HostSharedData<CfxState> initState("CfxInitState");
 
 	// set link protocol, e.g. fivem or redm
 	initState->SetLinkProtocol(LINK_PROTOCOL);
@@ -334,10 +334,10 @@ int RealMain()
 		exeBaseName[0] = L'\0';
 		exeBaseName++;
 
-		if (GetFileAttributes(MakeRelativeCitPath(fmt::sprintf(L"%s.formaldev", exeBaseName)).c_str()) != INVALID_FILE_ATTRIBUTES || GetFileAttributes(fmt::sprintf(L"%s.formaldev", exeNameSaved).c_str()) != INVALID_FILE_ATTRIBUTES)
-		{
-			devMode = true;
-		}
+		// if (GetFileAttributes(MakeRelativeCitPath(fmt::sprintf(L"%s.formaldev", exeBaseName)).c_str()) != INVALID_FILE_ATTRIBUTES || GetFileAttributes(fmt::sprintf(L"%s.formaldev", exeNameSaved).c_str()) != INVALID_FILE_ATTRIBUTES)
+		// {
+		// 	devMode = true;
+		// }
 	}
 #else
 	bool devMode = true;
@@ -353,7 +353,7 @@ int RealMain()
 	{
 		auto regPath = MakeRelativeCitPath(L"");
 
-		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\CitizenFX\\" PRODUCT_NAME, L"Last Run Location", REG_SZ, regPath.c_str(), (regPath.size() + 1) * 2);
+		RegSetKeyValueW(HKEY_CURRENT_USER, L"SOFTWARE\\LSBCommunity\\" PRODUCT_NAME, L"Last Run Location", REG_SZ, regPath.c_str(), (regPath.size() + 1) * 2);
 	}
 
 	SetCurrentProcessExplicitAppUserModelID(va(L"CitizenFX.%s.%s", PRODUCT_NAME, launch::IsSDK() ? L"SDK" : L"Client"));
@@ -511,10 +511,10 @@ int RealMain()
 		L"\\dsound.dll", // breaks DSound init in game code
 
 		// X360CE v3 is buggy with COM hooks
-		//L"\\xinput9_1_0.dll",
-		//L"\\xinput1_1.dll",
-		//L"\\xinput1_2.dll",
-		//L"\\xinput1_3.dll",
+		// L"\\xinput9_1_0.dll",
+		// L"\\xinput1_1.dll",
+		// L"\\xinput1_2.dll",
+		// L"\\xinput1_3.dll",
 		L"\\xinput1_4.dll",
 
 		// packed DLL commonly shipping with RDR mods
@@ -686,7 +686,7 @@ int RealMain()
 			// also do checks here to complain at BAD USERS
 			if (!GetProcAddress(GetModuleHandle(L"kernel32.dll"), "SetThreadDescription")) // kernel32 forwarder only got this export in 1703, kernelbase.dll got this in 1607.
 			{
-				std::wstring fpath = MakeRelativeCitPath(L"CitizenFX.ini");
+				std::wstring fpath = MakeRelativeCitPath(L"LSB.ini");
 
 				bool showOSWarning = true;
 
@@ -705,7 +705,8 @@ int RealMain()
 				}
 			}
 
-			bool checkElevation = !CfxIsWine();
+			// bool checkElevation = !CfxIsWine();
+			bool checkElevation = false;
 
 #ifdef _DEBUG
 			checkElevation = false;
@@ -832,10 +833,10 @@ int RealMain()
 				UI_DoCreation(false);
 
 				std::string firstTitle = fmt::sprintf("Starting %s",
-					minModeManifest->Get("productName", ToNarrow(PRODUCT_NAME)));
+				minModeManifest->Get("productName", ToNarrow(PRODUCT_NAME)));
 				std::string firstSubtitle = (wcsstr(GetCommandLineW(), L"-switchcl"))
-					? gettext("Transitioning to another build...") 
-					: minModeManifest->Get("productSubtitle", gettext("We're getting there."));
+											? gettext("Transitioning to another build...")
+											: minModeManifest->Get("productSubtitle", gettext("We're getting there."));
 
 				std::string lastTitle = firstTitle;
 				std::string lastSubtitle = firstSubtitle;
@@ -965,7 +966,8 @@ int RealMain()
 #endif
 
 			UI_DestroyTen();
-		}).detach();
+		})
+		.detach();
 	}
 
 	if (launch::IsSDKGuest())
@@ -1009,7 +1011,7 @@ int RealMain()
 		{
 #endif
 #ifdef _DEBUG
-			//MessageBox(nullptr, va(L"Gameruntime starting (pid %d)", GetCurrentProcessId()), L"CitizenFx", MB_OK);
+			// MessageBox(nullptr, va(L"Gameruntime starting (pid %d)", GetCurrentProcessId()), L"CitizenFx", MB_OK);
 #endif
 
 #if (defined(GTA_FIVE) || defined(IS_RDR3)) && !defined(LAUNCHER_PERSONALITY_GAME) && defined(LAUNCHER_PERSONALITY_MAIN)
@@ -1049,7 +1051,7 @@ int RealMain()
 
 			if (coreRT)
 			{
-				auto gameProc = (void(*)())GetProcAddress(coreRT, "GameMode_Init");
+				auto gameProc = (void (*)())GetProcAddress(coreRT, "GameMode_Init");
 
 				if (gameProc)
 				{
@@ -1070,17 +1072,17 @@ int RealMain()
 
 		if (coreRT)
 		{
-			auto toolProc = (void(*)())GetProcAddress(coreRT, "ToolMode_Init");
+			auto toolProc = (void (*)())GetProcAddress(coreRT, "ToolMode_Init");
 
 			if (toolProc)
 			{
-				auto gameFunctionProc = (void(*)(void(*)(const wchar_t*)))GetProcAddress(coreRT, "ToolMode_SetGameFunction");
+				auto gameFunctionProc = (void (*)(void (*)(const wchar_t*)))GetProcAddress(coreRT, "ToolMode_SetGameFunction");
 
 				if (gameFunctionProc)
 				{
 					static auto gameExecutableStr = gameExecutable;
 
-					gameFunctionProc([] (const wchar_t* customExecutable)
+					gameFunctionProc([](const wchar_t* customExecutable)
 					{
 						if (customExecutable == nullptr)
 						{
@@ -1100,7 +1102,7 @@ int RealMain()
 					});
 				}
 
-                CitizenGame::SetCoreMapping();
+				CitizenGame::SetCoreMapping();
 
 				toolProc();
 			}

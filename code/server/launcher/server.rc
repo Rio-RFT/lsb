@@ -44,13 +44,13 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "Cfx.re"
-			VALUE "FileDescription", "Cfx.re Platform Server (FXServer)"
+            VALUE "CompanyName", "Refined Development"
+			VALUE "FileDescription", "LSB Platform Server (LSBServer)"
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "InternalName", "Citizen"
-            VALUE "LegalCopyright", "(C) 2017-2020 Cfx.re"
+            VALUE "InternalName", "LSB"
+            VALUE "LegalCopyright", "(C) 2025 Refined Developement"
             VALUE "OriginalFilename", "FXServer.exe"
-            VALUE "ProductName", "CitizenFX"
+            VALUE "ProductName", "LSB"
             VALUE "ProductVersion", "1.0.0.0"
         END
     END
