@@ -3,10 +3,10 @@
 # Uploads files directly from Source to VPS (No Staging, No Zip)
 
 param (
-    [string]$RemoteHost = "160.191.51.59",
-    [string]$RemoteUser = "root",
-    [string]$RemoteDir = "/opt/launcher-backend/release",
-    [string]$SourceDir = "c:\Users\Administrator\Desktop\lsb\code\bin\five\release"
+    [string]$RemoteHost = "",
+    [string]$RemoteUser = "",
+    [string]$RemoteDir = "",
+    [string]$SourceDir = ""
 )
 
 $ErrorActionPreference = "Stop"
