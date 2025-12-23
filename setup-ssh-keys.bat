@@ -5,8 +5,8 @@ setlocal
 :: This script sets up "password-less" access by deploying an SSH Key to the VPS.
 :: You will need to enter your VPS password ONE LAST TIME.
 
-set "VPS_IP=160.191.51.59"
-set "VPS_USER=root"
+set "VPS_IP="
+set "VPS_USER="
 
 echo ============================================================
 echo       LSB Launcher - SSH Key Setup
